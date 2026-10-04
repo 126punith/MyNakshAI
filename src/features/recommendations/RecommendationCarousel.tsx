@@ -11,6 +11,8 @@ export function RecommendationCarousel({ items }: Props) {
   return (
     <ScrollView
       horizontal
+      nestedScrollEnabled
+      style={styles.scroller}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}
     >
@@ -31,6 +33,10 @@ export function RecommendationCarousel({ items }: Props) {
 }
 
 const styles = StyleSheet.create({
+  scroller: {
+    height: 112,
+    flexGrow: 0,
+  },
   row: {
     paddingTop: 8,
     paddingRight: 6,

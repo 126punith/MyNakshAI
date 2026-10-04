@@ -107,6 +107,12 @@ android {
     }
 }
 
+// The React Native plugin sets release cleartext to false inside finalizeDsl.
+// This later callback wins so the release app can reach http://10.0.2.2:3001.
+project.extensions.getByType(com.android.build.api.variant.ApplicationAndroidComponentsExtension).finalizeDsl { ext ->
+    ext.buildTypes.getByName("release").manifestPlaceholders.put("usesCleartextTraffic", "true")
+}
+
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")

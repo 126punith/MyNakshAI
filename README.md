@@ -4,18 +4,35 @@ A React Native conversation screen where an AI reply can carry recommendation ca
 
 ## Run
 
+Start the demo mock before opening the app:
+
 ```sh
-npm run server
-npm run android
+cd mock-api && npm start
 ```
 
-The API listens on port 3001. The Android emulator reaches it at `http://10.0.2.2:3001`.
+Then open the app (`npm run android`). The API listens on `0.0.0.0:3001`. The Android emulator reaches it at `http://10.0.2.2:3001`.
 
-Send the text `fail` to see a failed message and Retry. Set `SIMULATE_LOAD_FAILURE` in `src/services/conversationApi.ts` to `true` before the first launch (empty MMKV) to see the load error.
+Debug already allows that HTTP call. A release install does not, until `android/app/build.gradle` sets `usesCleartextTraffic` for release. Rebuild and reinstall the release APK after that change. A Metro reload does not apply the flag.
+
+`server/` stays and binds the same port through `npm run server`. Do not run both at once.
+
+Send the text `fail` from the composer to see **Failed** and **Retry**. A `500` that did not come from the app has no bubble. Retry on a `fail` bubble sends `fail` again. Seed bubbles do not show Sent. To film the load error, clear app storage and open the app while the mock is stopped. Start the mock and tap Retry.
+
+A release install bakes JavaScript into the APK. After a JS change, reinstall with `npm run android -- --mode release --no-packager`.
+
+## Demo recording (2–5 min)
+
+Start the mock, then install the app. Clear the app storage on the emulator (Settings, Apps, MyNaksh AI, Storage, Clear storage) and open the app again. A saved thread is not refetched. `clearConversation()` in `src/features/conversation/storage.ts` removes the same MMKV key; there is no button for it.
+
+1. Clear app storage with the mock running. The first launch shows **Loading conversation...**, then an empty thread: **Start your conversation.** Tap **Career**, **Love**, **Health**, or **Money**. The reply asks for a date of birth. Pick a date and confirm. One reading follows, then **Please buy the plan.** `hi` or `start` asks you to choose and shows no card.
+2. Long-press the AI reply. Reply shows a preview above the composer. Copy writes the text. Delete removes the message and does not jump the list.
+3. On an AI message, tap Dislike, then a chip (Inaccurate, Too Generic, Didn't Help, Too Long). Feedback is on AI messages only.
+4. Send `career`. The bubble shows **Sending...**, then **Sent**, and a tarot card appears. Send `fail`. The bubble shows **Failed** and **Retry**, and the mock logs `500`.
+5. Stop the mock and clear app storage. The screen shows **Unable to load conversation.** and Retry. Start the mock and tap Retry. The thread loads.
 
 ## Project structure
 
-- `server/` is a dependency-free Node process. `GET /conversation` returns the seed. `POST /messages` accepts `{ clientId, text, replyToId }` and returns the user message plus one AI reply.
+- `mock-api/` is a separate Node app, not part of the React Native bundle. `npm start` runs `node index.js`. `GET /conversation` returns the seed. `POST /messages` accepts `{ clientId, text, replyToId }` and returns the user message plus one AI reply. `server/` is the original process and still serves those routes.
 - `src/features/conversation/` is the thread: types, MMKV storage, the Zustand store, the timeline, the list, the row, the composer, feedback, and the action sheet.
 - `src/features/recommendations/` is the registry, one card, and the horizontal carousel.
 - `src/navigation/RootNavigator.tsx` is a single native stack.

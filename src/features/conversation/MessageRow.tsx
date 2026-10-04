@@ -82,7 +82,9 @@ function AiMessage({
         <Text style={styles.body}>{message.text}</Text>
       </Pressable>
       {message.recommendations?.length ? (
-        <RecommendationCarousel items={message.recommendations} />
+        <View style={styles.cards}>
+          <RecommendationCarousel items={message.recommendations} />
+        </View>
       ) : null}
       <FeedbackBar message={message} />
       <ActionSheet
@@ -134,12 +136,21 @@ function StatusLine({ message }: { message: Message }) {
     return <Text style={styles.status}>Sending...</Text>;
   }
   if (message.status === 'sent') {
+    if (!message.id.startsWith('local-')) {
+      return null;
+    }
     return <Text style={styles.status}>Sent</Text>;
   }
   return (
-    <Pressable onPress={() => retry(message.id).catch(() => undefined)}>
-      <Text style={styles.failed}>Failed · Retry</Text>
-    </Pressable>
+    <View style={styles.statusRow}>
+      <Text style={styles.failed}>Failed</Text>
+      <Pressable
+        onPress={() => retry(message.id).catch(() => undefined)}
+        hitSlop={8}
+      >
+        <Text style={styles.retry}>Retry</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -179,6 +190,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.line,
   },
+  cards: {
+    flexGrow: 0,
+  },
   body: {
     color: theme.ink,
     fontSize: 16,
@@ -205,11 +219,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'right',
   },
-  failed: {
+  statusRow: {
     marginTop: 4,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  failed: {
     color: theme.danger,
     fontSize: 12,
-    textAlign: 'right',
+  },
+  retry: {
+    marginLeft: 8,
+    color: theme.accent,
+    fontSize: 12,
+    fontWeight: '700',
   },
   system: {
     marginTop: 12,

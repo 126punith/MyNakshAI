@@ -59,7 +59,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   try {
     if (req.method === 'GET' && url.pathname === '/conversation') {
-      await wait(600);
+      await wait(1200);
       if (url.searchParams.get('fail') === '1') {
         send(res, 500, { error: 'Unable to load conversation.' });
         return;
@@ -76,7 +76,7 @@ const server = http.createServer(async (req, res) => {
         send(res, 400, { error: 'text and clientId are required' });
         return;
       }
-      await wait(900);
+      await wait(1600);
       if (text.toLowerCase() === 'fail') {
         send(res, 500, { error: 'Send failed' });
         return;

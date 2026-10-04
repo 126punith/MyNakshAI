@@ -1,9 +1,19 @@
 import { create } from 'zustand';
 import { fetchConversation, postMessage } from '../../services/conversationApi';
 import { readConversation, writeConversation } from './storage';
-import type { DislikeReason, Feedback, Message } from './types';
+import type {
+  ConversationSnapshot,
+  DislikeReason,
+  Feedback,
+  Message,
+} from './types';
 
 type ScreenStatus = 'loading' | 'ready' | 'error';
+
+type SendExtra = {
+  birthDate?: string;
+  topic?: string;
+};
 
 type ConversationState = {
   status: ScreenStatus;
@@ -11,7 +21,7 @@ type ConversationState = {
   order: string[];
   replyingToId: string | null;
   load: () => Promise<void>;
-  send: (text: string) => Promise<void>;
+  send: (text: string, extra?: SendExtra) => Promise<void>;
   retry: (id: string) => Promise<void>;
   remove: (id: string) => void;
   setReplyingTo: (id: string | null) => void;
@@ -30,6 +40,26 @@ function save(byId: Record<string, Message>, order: string[]) {
   writeConversation({ byId, order });
 }
 
+function recoverSending(snapshot: ConversationSnapshot): ConversationSnapshot {
+  let changed = false;
+  const byId = { ...snapshot.byId };
+  for (const id of snapshot.order) {
+    const message = byId[id];
+    if (message?.status === 'sending') {
+      byId[id] = { ...message, status: 'failed' };
+      changed = true;
+    }
+  }
+  if (!changed) {
+    return snapshot;
+  }
+  const next = { byId, order: snapshot.order };
+  save(byId, next.order);
+  return next;
+}
+
+const sendMeta = new Map<string, SendExtra>();
+
 async function deliver(get: StoreGet, set: StoreSet, clientId: string) {
   const current = get().byId[clientId];
   if (!current) {
@@ -45,11 +75,19 @@ async function deliver(get: StoreGet, set: StoreSet, clientId: string) {
   }
 
   try {
+    const extra = sendMeta.get(clientId);
     const result = await postMessage({
       clientId,
       text: current.text,
       replyToId: current.replyToId ?? null,
+      birthDate: extra?.birthDate,
+      topic: extra?.topic,
     });
+    sendMeta.delete(clientId);
+    const replies =
+      result.aiMessages && result.aiMessages.length > 0
+        ? result.aiMessages
+        : [result.aiMessage];
     const nextById = {
       ...get().byId,
       [clientId]: {
@@ -57,11 +95,14 @@ async function deliver(get: StoreGet, set: StoreSet, clientId: string) {
         status: 'sent' as const,
         replyToId: current.replyToId ?? null,
       },
-      [result.aiMessage.id]: { ...result.aiMessage, status: 'sent' as const },
     };
-    const order = get().order.includes(result.aiMessage.id)
-      ? get().order
-      : [...get().order, result.aiMessage.id];
+    let order = get().order;
+    for (const aiMessage of replies) {
+      nextById[aiMessage.id] = { ...aiMessage, status: 'sent' as const };
+      if (!order.includes(aiMessage.id)) {
+        order = [...order, aiMessage.id];
+      }
+    }
     set({ byId: nextById, order });
     save(nextById, order);
   } catch {
@@ -79,17 +120,19 @@ async function deliver(get: StoreGet, set: StoreSet, clientId: string) {
 }
 
 const cached = readConversation();
+const hydrated = cached ? recoverSending(cached) : null;
 
 export const useConversationStore = create<ConversationState>((set, get) => ({
-  status: cached ? 'ready' : 'loading',
-  byId: cached?.byId ?? {},
-  order: cached?.order ?? [],
+  status: hydrated ? 'ready' : 'loading',
+  byId: hydrated?.byId ?? {},
+  order: hydrated?.order ?? [],
   replyingToId: null,
 
   load: async () => {
     const stored = readConversation();
     if (stored) {
-      set({ status: 'ready', byId: stored.byId, order: stored.order });
+      const recovered = recoverSending(stored);
+      set({ status: 'ready', byId: recovered.byId, order: recovered.order });
       return;
     }
     set({ status: 'loading' });
@@ -108,12 +151,18 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     }
   },
 
-  send: async (text: string) => {
+  send: async (text: string, extra?: SendExtra) => {
     const trimmed = text.trim();
     if (!trimmed) {
       return;
     }
     const clientId = `local-${Date.now()}`;
+    if (extra?.birthDate && extra.topic) {
+      sendMeta.set(clientId, {
+        birthDate: extra.birthDate,
+        topic: extra.topic,
+      });
+    }
     const replyToId = get().replyingToId;
     const optimistic: Message = {
       id: clientId,

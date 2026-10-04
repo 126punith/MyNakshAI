@@ -27,3 +27,7 @@ export function readConversation(): ConversationSnapshot | null {
 export function writeConversation(snapshot: ConversationSnapshot) {
   db.set(KEY, JSON.stringify(snapshot));
 }
+
+export function clearConversation() {
+  db.remove(KEY);
+}

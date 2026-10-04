@@ -32,4 +32,5 @@ export type ConversationSnapshot = {
 export type SendResult = {
   userMessage: Message;
   aiMessage: Message;
+  aiMessages?: Message[];
 };

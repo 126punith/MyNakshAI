@@ -15,7 +15,6 @@ import { useConversationStore } from './store';
 
 export function ConversationScreen() {
   const status = useConversationStore(state => state.status);
-  const count = useConversationStore(state => state.order.length);
   const load = useConversationStore(state => state.load);
 
   useEffect(() => {
@@ -47,13 +46,7 @@ export function ConversationScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {count === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.message}>Start your conversation.</Text>
-        </View>
-      ) : (
-        <MessageList />
-      )}
+      <MessageList />
       <Composer />
     </KeyboardAvoidingView>
   );
