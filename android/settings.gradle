@@ -1,0 +1,11 @@
+pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+rootProject.name = 'com.mynaksh.ai'
+include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')
+
+def reactNativeDir = new File(settingsDir, "../node_modules/react-native").absolutePath
+gradle.beforeProject { project ->
+    project.ext.REACT_NATIVE_NODE_MODULES_DIR = reactNativeDir
+}
